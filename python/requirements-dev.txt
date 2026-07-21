@@ -1,0 +1,8 @@
+# MediaHub v2 — Python dev requirements (host-only; NOT bundled)
+# Used by pytest/mypy/ruff on the dev host and CI host (not the APK).
+-r requirements.lock
+pytest>=8.0,<9.0
+pytest-cov>=5.0,<6.0
+ruff>=0.6.0,<0.7.0
+mypy>=1.11,<2.0
+pip-audit>=2.7,<3.0

@@ -1,0 +1,143 @@
+# =============================================================================
+# MediaHub v2 — import_lint configuration
+# Authority: ADR-002 (dependency rule), ADR-015 (CI build-breaking)
+# =============================================================================
+# This is the structural defence against v1's failures:
+#   - UI importing data classes directly
+#   - Provider leakage between features
+#   - Circular module dependencies
+#
+# Every rule below is a build-breaking error in CI. To amend it, an ADR must
+# be opened (Chapter 13 of the SAD).
+#
+# Syntax: https://pub.dev/packages/import_lint
+# =============================================================================
+
+# Each rule: "name" rule that bans certain imports for certain file globs.
+rules:
+  # ── DOMAIN PURITY (ADR-002) ─────────────────────────────────────────────────
+  # The domain package must NOT import Flutter, Riverpod, Drift, dio, or any
+  # other outer-layer framework.
+  - name: domain_no_flutter
+    rules:
+      - target: packages/domain/lib/**/*.dart
+        notAllow:
+          - package:flutter/
+          - package:flutter_riverpod/
+          - package:riverpod_annotation/
+          - package:drift/
+          - package:sqlite3_flutter_libs/
+          - package:dio/
+          - package:flutter_secure_storage/
+          - package:workmanager/
+          - package:sentry_flutter/
+          - package:path_provider/
+        exclude:
+          - "**/*.g.dart"
+          - "**/*.freezed.dart"
+
+  # The domain may not import any sibling outer package.
+  - name: domain_no_outer_packages
+    rules:
+      - target: packages/domain/lib/**/*.dart
+        notAllow:
+          - package:mediahub_data/
+          - package:mediahub_application/
+          - package:mediahub_design_system/
+          - package:mediahub_python_bridge/
+          - package:mediahub_sync_engine/
+          - package:mediahub_v2/
+
+  # ── DATA MAY NOT IMPORT FLUTTER UI / RIVERPOD (ADR-002) ────────────────────
+  - name: data_no_flutter_ui
+    rules:
+      - target: packages/data/lib/**/*.dart
+        notAllow:
+          - package:flutter/widgets.dart
+          - package:flutter/material.dart
+          - package:flutter/cupertino.dart
+          - package:flutter_riverpod/
+          - package:riverpod_annotation/
+          - package:mediahub_application/
+          - package:mediahub_design_system/
+
+  # ── APPLICATION MAY NOT IMPORT DATA / DRIFT (ADR-002) ───────────────────────
+  - name: application_no_data
+    rules:
+      - target: packages/application/lib/**/*.dart
+        notAllow:
+          - package:drift/
+          - package:dio/
+          - package:flutter_secure_storage/
+          - package:mediahub_data/
+          - package:mediahub_python_bridge/
+          - package:mediahub_design_system/
+
+  # ── DESIGN_SYSTEM MAY NOT IMPORT DOMAIN/APPLICATION/DATA (ADR-002) ──────────
+  - name: design_system_isolated
+    rules:
+      - target: packages/design_system/lib/**/*.dart
+        notAllow:
+          - package:mediahub_domain/
+          - package:mediahub_application/
+          - package:mediahub_data/
+          - package:mediahub_python_bridge/
+          - package:mediahub_sync_engine/
+          - package:drift/
+          - package:dio/
+
+  # ── PYTHON_BRIDGE MAY NOT IMPORT FLUTTER UI / RIVERPOD (ADR-002) ────────────
+  - name: python_bridge_isolated
+    rules:
+      - target: packages/python_bridge/lib/**/*.dart
+        notAllow:
+          - package:flutter/widgets.dart
+          - package:flutter/material.dart
+          - package:flutter_riverpod/
+          - package:riverpod_annotation/
+          - package:drift/
+          - package:dio/
+          - package:mediahub_application/
+          - package:mediahub_design_system/
+
+  # ── SYNC_ENGINE MAY NOT IMPORT FLUTTER UI / RIVERPOD (ADR-002) ──────────────
+  - name: sync_engine_isolated
+    rules:
+      - target: packages/sync_engine/lib/**/*.dart
+        notAllow:
+          - package:flutter/widgets.dart
+          - package:flutter/material.dart
+          - package:flutter_riverpod/
+          - package:riverpod_annotation/
+          - package:mediahub_application/
+          - package:mediahub_design_system/
+
+  # ── APP MAY NOT IMPORT DRIFT / DIO DIRECTLY (ADR-002) ──────────────────────
+  # The presentation layer (lib/presentation/) talks to the application layer;
+  # never to the data layer's frameworks. The composition root (lib/bootstrap/)
+  # is EXEMPT — it must import the data layer to wire repository impls into
+  # application-layer providers (ADR-002 §6.3: "Cross-cutting services are
+  # wired in bootstrap").
+  - name: app_no_data_frameworks
+    rules:
+      - target: lib/**/*.dart
+        notAllow:
+          - package:drift/
+          - package:dio/
+          - package:flutter_secure_storage/
+          - package:sqlite3_flutter_libs/
+          - package:workmanager/
+          - package:mediahub_data/
+          - package:mediahub_python_bridge/
+          - package:mediahub_sync_engine/
+        # NOTE: tools/check_imports.sh exempts lib/bootstrap/** from this rule.
+        # The bootstrap is the composition root; it wires data→application.
+
+# Files whose import lines should not be analysed.
+exclude:
+  - "**/*.g.dart"
+  - "**/*.freezed.dart"
+  - "**/*.drift.dart"
+  - "**/pigeon/**"
+  - "**/.dart_tool/**"
+  - "**/build/**"

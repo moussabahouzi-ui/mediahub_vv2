@@ -1,0 +1,28 @@
+# =============================================================================
+# MediaHub v2 — packages/domain
+# Authority: ADR-002 (Clean Architecture), ADR-009 (typed Failure)
+# =============================================================================
+# IRON LAW (ADR-002): the domain package imports NOTHING from outside itself
+# except the Dart SDK + pure-Dart deps. No Flutter, no Drift, no Riverpod, no
+# dio. analysis_options.yaml enforces this structurally.
+# =============================================================================
+
+name: mediahub_domain
+description: "MediaHub v2 — pure-Dart domain (entities, value objects, repository ports)."
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+
+dependencies:
+  # freezed_annotation v3 — required by riverpod_lint 2.6.5+ (Bootstrap Validation).
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+
+dev_dependencies:
+  build_runner: ^2.4.13
+  freezed: ^3.0.0
+  json_serializable: ^6.8.0
+  test: ^1.25.8
+  lints: ^5.1.1

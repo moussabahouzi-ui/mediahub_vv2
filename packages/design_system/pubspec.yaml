@@ -1,0 +1,19 @@
+# MediaHub v2 — packages/design_system
+# Authority: ADR-002 (presentation layer; must NOT import domain/data)
+name: mediahub_design_system
+description: "MediaHub v2 — design system (tokens, widgets, accessibility)."
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0 <3.30.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  golden_toolkit: ^0.15.0

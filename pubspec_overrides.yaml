@@ -1,0 +1,14 @@
+# melos_managed_dependency_overrides: mediahub_application,mediahub_data,mediahub_design_system,mediahub_domain,mediahub_python_bridge,mediahub_sync_engine
+dependency_overrides:
+  mediahub_application:
+    path: packages/application
+  mediahub_data:
+    path: packages/data
+  mediahub_design_system:
+    path: packages/design_system
+  mediahub_domain:
+    path: packages/domain
+  mediahub_python_bridge:
+    path: packages/python_bridge
+  mediahub_sync_engine:
+    path: packages/sync_engine

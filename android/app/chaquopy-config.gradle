@@ -1,0 +1,32 @@
+// =============================================================================
+// MediaHub v2 — Chaquopy configuration (Groovy script, applied from KTS)
+// Authority: ADR-007 (Chaquopy), ADR-014 (reproducibility)
+// =============================================================================
+// This file configures the Chaquopy plugin. It's a Groovy script (not Kotlin
+// DSL) because Chaquopy is applied via legacy `buildscript { classpath() }`,
+// and the Kotlin DSL compiler doesn't generate type-safe accessors for
+// extensions registered by legacy-applied plugins.
+//
+// Applied from android/app/build.gradle.kts via:
+//   apply(from = "chaquopy-config.gradle")
+
+chaquopy {
+    defaultConfig {
+        // Python version — matches libs.versions.toml's `python` entry.
+        version = "3.11"
+
+        // PyPI packages — pinned in python/requirements.lock (ADR-014).
+        // Phase 2 Feature #5: empty (no third-party deps yet).
+        pip {
+            // install("-r", "src/main/python/requirements.lock")
+        }
+    }
+    productFlavors.all {
+        // Multi-flavour support reserved; Phase 2 has no flavors.
+    }
+}
+
+// Python source directory — Chaquopy defaults to src/main/python.
+// We symlink android/app/src/main/python -> ../../assets/python so the
+// same Python source is shared between the Flutter asset bundle and the
+// Chaquopy runtime (ADR-007). The symlink is created by tools/gen.sh.

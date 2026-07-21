@@ -1,0 +1,30 @@
+# MediaHub v2 — packages/application
+# Authority: ADR-002 (application layer), ADR-003 (Riverpod)
+name: mediahub_application
+description: "MediaHub v2 — application layer (Riverpod providers + use-cases)."
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0 <3.30.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+  # Local packages — application depends on domain + sync_engine interfaces.
+  mediahub_domain:
+    path: ../domain
+  mediahub_sync_engine:
+    path: ../sync_engine
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.5
+  custom_lint: ^0.7.6
+  riverpod_lint: ^2.6.5
+  mocktail: ^1.0.4

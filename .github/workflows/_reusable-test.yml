@@ -1,0 +1,52 @@
+# =============================================================================
+# MediaHub v2 — Reusable workflow: tests (ADR-017)
+# =============================================================================
+name: _reusable-test
+on:
+  workflow_call:
+
+jobs:
+  dart-unit:
+    name: Dart unit tests (domain + data + application)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+      - uses: ./.github/actions/verify-versions
+      - name: melos bootstrap
+        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
+      - name: Run unit tests (domain + data + application + sync_engine)
+        run: |
+          fvm flutter test packages/domain/test
+          fvm flutter test packages/data/test
+          fvm flutter test packages/application/test
+          fvm flutter test packages/sync_engine/test
+          fvm flutter test packages/python_bridge/test
+          fvm flutter test packages/design_system/test
+
+  widget:
+    name: Widget tests (app)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+      - uses: ./.github/actions/verify-versions
+      - name: melos bootstrap
+        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
+      - name: Run widget tests
+        run: fvm flutter test test/
+
+  python:
+    name: Python pytest
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-python
+      - name: Install mediahub package (editable)
+        run: |
+          cd python
+          pip install -e .
+      - name: Run pytest
+        run: |
+          cd python
+          pytest -v --cov=mediahub --cov-report=term-missing

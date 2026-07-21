@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MediaHub v2 — AndroidManifest.xml (Phase 0)
+  Authority: ADR-001 (Flutter), ADR-007 (Chaquopy), ADR-012 (SDK matrix)
+  Phase 0: minimal manifest. No feature permissions yet.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      INTERNET: required by dio (network client) + Sentry.
+      ACCESS_NETWORK_STATE: required by WorkManager + sync engine (ADR-006).
+      Phase 1+ will add feature-specific permissions (storage, media playback).
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:label="MediaHub"
+        android:icon="@mipmap/ic_launcher"
+        android:name="${applicationName}"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:extractNativeLibs="true"
+        android:usesCleartextTraffic="false"
+        tools:targetApi="35"
+        xmlns:tools="http://schemas.android.com/tools">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|aspectRatio|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          Flutter engine metadata — required by Flutter's embedding.
+        -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+        <!--
+          Chaquopy bootstrap — ADR-007.
+          Chaquopy auto-registers itself; no extra entry needed.
+        -->
+
+        <!--
+          WorkManager — ADR-006 (background sync).
+          Deferred-initialisation; sync engine uses custom Worker classes.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <!--
+              Disable the default WorkManager initializer; we initialise it
+              on-demand from bootstrap.dart via Configuration.Provider.
+            -->
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+    </application>
+</manifest>

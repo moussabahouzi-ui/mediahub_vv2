@@ -1,0 +1,47 @@
+# =============================================================================
+# MediaHub v2 — packages/domain analysis_options
+# Authority: ADR-002 (domain MUST be pure Dart — no Flutter imports)
+# =============================================================================
+# This is the strictest analysis_options in the project. It structurally
+# prevents the v1 failure mode of UI/data types leaking into the domain.
+#
+# NOTE: the include path uses package:flutter_lints/flutter.yaml (the same
+# file the root analysis_options.yaml uses). The relative path
+# `../../analysis_options.yaml` doesn't resolve from the analyzer's
+# perspective when the package is consumed via path dependency.
+
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    # Treat banned imports as errors.
+    invalid_use_of_visible_for_testing_member: error
+    deprecated_member_use: error
+
+  # Phase 0 ban list — extend per feature phase.
+  # The `ignore_for_file` below only relaxes lints inside GENERATED files.
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
+linter:
+  rules:
+    # ── Domain purity guardrails ─────────────────────────────────────────────────
+    always_use_package_imports: true        # force package: imports over relative
+    avoid_relative_lib_imports: true
+    implementation_imports: true            # ban imports of package:.../src/...
+
+# =============================================================================
+# Custom lint rule: BANNED IMPORTS in the domain package
+# =============================================================================
+# The ADR-002 dependency rule for the domain package (no Flutter, no Drift,
+# no Riverpod, no dio, no workmanager imports) is enforced by
+# `tools/check_imports.sh` — a grep-based checker that reads the rule
+# definitions in packages/tooling/import_lint/config.yaml.
+#
+# CI runs `bash tools/check_imports.sh` in the `_reusable-lint` workflow
+# (ADR-015). A violation is a build-breaking error.
+#
+# Phase 1 will replace `check_imports.sh` with a proper `custom_lint` plugin
+# (D-1 deviation in DEVIATIONS.md; the original `import_lint` package was
+# removed because its analyzer constraint conflicts with the freezed v3 stack).

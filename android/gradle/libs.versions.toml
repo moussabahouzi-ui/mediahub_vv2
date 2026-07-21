@@ -1,0 +1,54 @@
+# =============================================================================
+# MediaHub v2 — Gradle version catalog (single source of truth for native deps)
+# Authority: ADR-013 (version matrix), ADR-014 (reproducibility)
+# =============================================================================
+# Every native version originates here. No literal versions in build.gradle.kts
+# or settings.gradle.kts. CI verifies that this catalog + the gradle wrapper +
+# the AGP/Kotlin/Gradle compatibility matrix are consistent.
+
+[versions]
+# Build tools
+agp              = "8.7.3"           # Android Gradle Plugin
+kotlin            = "2.0.21"          # Kotlin compiler
+gradle            = "8.11.1"         # Gradle wrapper (must match wrapper)
+ksp               = "2.0.21-1.0.28"  # Kotlin Symbol Processing — pinned to Kotlin
+
+# AndroidX / KMP
+coreKtx           = "1.15.0"
+appcompat         = "1.7.0"
+activityCompose   = "1.9.3"          # not used in Phase 0 but reserved
+lifecycle         = "2.8.7"
+workRuntime       = "2.10.0"         # WorkManager — ADR-006
+multidex          = "2.0.1"
+
+# Chaquopy (embedded Python) — ADR-007
+chaquopy          = "16.1.0"
+python            = "3.11"
+
+# Testing
+junit             = "4.13.2"
+androidxJunit     = "1.2.1"
+espresso          = "3.6.1"
+
+# Static analysis
+detekt            = "1.23.7"
+
+[libraries]
+# AndroidX
+androidx-core-ktx        = { group = "androidx.core",          name = "core-ktx",          version.ref = "coreKtx" }
+androidx-appcompat       = { group = "androidx.appcompat",     name = "appcompat",         version.ref = "appcompat" }
+androidx-lifecycle-runtime = { group = "androidx.lifecycle",   name = "lifecycle-runtime", version.ref = "lifecycle" }
+androidx-work-runtime    = { group = "androidx.work",          name = "work-runtime-ktx",  version.ref = "workRuntime" }
+androidx-multidex        = { group = "androidx.multidex",       name = "multidex",          version.ref = "multidex" }
+
+# Testing
+junit                    = { group = "junit",                   name = "junit",             version.ref = "junit" }
+androidx-junit           = { group = "androidx.test.ext",       name = "junit",             version.ref = "androidxJunit" }
+androidx-espresso-core   = { group = "androidx.test.espresso",  name = "espresso-core",     version.ref = "espresso" }
+
+[plugins]
+android-application      = { id = "com.android.application",     version.ref = "agp" }
+kotlin-android           = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+chaquopy                 = { id = "com.chaquo.python",            version.ref = "chaquopy" }
+ksp                      = { id = "com.google.devtools.ksp",     version.ref = "ksp" }
+detekt                   = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

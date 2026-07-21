@@ -1,0 +1,39 @@
+# MediaHub v2 — packages/data
+# Authority: ADR-002, ADR-005 (Drift), ADR-008 (Pigeon), ADR-011 (security)
+name: mediahub_data
+description: "MediaHub v2 — data layer (Drift, network, repo impls, IPC client)."
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0 <3.30.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Local packages — allowed imports per ADR-002 dependency rule:
+  mediahub_domain:
+    path: ../domain
+  mediahub_python_bridge:
+    path: ../python_bridge
+
+  # Data-layer frameworks
+  drift: ^2.21.0
+  sqlite3_flutter_libs: ^0.5.27
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+  path: ^1.9.0
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.13
+  freezed: ^3.0.0
+  json_serializable: ^6.8.0
+  drift_dev: ^2.21.0
+  mocktail: ^1.0.4

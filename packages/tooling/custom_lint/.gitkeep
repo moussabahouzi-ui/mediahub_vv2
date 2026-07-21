@@ -1,0 +1,2 @@
+// Phase 0 placeholder. Phase 1+: custom_lint rules (e.g. exhaustiveness
+// check on Failure sealed hierarchy per ADR-009).

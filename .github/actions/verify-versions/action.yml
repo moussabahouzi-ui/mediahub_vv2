@@ -1,0 +1,138 @@
+# =============================================================================
+# MediaHub v2 — Composite action: version-matrix verifier (ADR-013)
+# =============================================================================
+# Cross-checks that the AGP/Kotlin/Gradle/NDK/Flutter/Python versions declared
+# in libs.versions.toml, gradle-wrapper.properties, .fvm/fvm_config.json, and
+# ci/Dockerfile all agree. Any drift = build failure (Phase 0 guardrail).
+#
+# TD-C4 fix (Architecture Review Gate): fvm 4.x writes `flutterSdkVersion`
+# instead of `flutter` to .fvm/fvm_config.json. The verifier now accepts both
+# keys (with `flutter` taking precedence for backward compatibility).
+#
+# TD-C5 fix (Architecture Review Gate): the AGP/Kotlin regex now matches the
+# actual `id("...") version "..."` DSL syntax used in settings.gradle.kts.
+# The old regex `r'"com\.android\.application"\s+version\s+"..."'` failed to
+# match `id("com.android.application")  version "8.7.3"`.
+name: verify-versions
+description: "Cross-check the version matrix across config files"
+runs:
+  using: composite
+  steps:
+    - name: Verify version matrix
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "==> Verifying version matrix (ADR-013)..."
+        python3 <<'PYEOF'
+        import re, sys, json, tomllib
+        from pathlib import Path
+
+        root = Path(".")
+        errs = []
+
+        # ── libs.versions.toml ──
+        toml = tomllib.loads((root / "android/gradle/libs.versions.toml").read_text())
+        agp = toml["versions"]["agp"]
+        kotlin = toml["versions"]["kotlin"]
+        gradle_toml = toml["versions"]["gradle"]
+        chaquopy = toml["versions"]["chaquopy"]
+        python_toml = toml["versions"]["python"]
+
+        # ── gradle-wrapper.properties ──
+        wrapper = (root / "android/gradle/wrapper/gradle-wrapper.properties").read_text()
+        m = re.search(r"gradle-(\d+\.\d+\.\d+)-bin\.zip", wrapper)
+        if not m:
+            errs.append("gradle-wrapper.properties: distributionUrl not found")
+        else:
+            gradle_wrapper = m.group(1)
+            if gradle_wrapper != gradle_toml:
+                errs.append(f"Gradle version mismatch: toml={gradle_toml}, wrapper={gradle_wrapper}")
+
+        # ── fvm_config.json (TD-C4 fix) ────────────────────────────────────────
+        # fvm 3.x writes {"flutter": "X.Y.Z"}; fvm 4.x writes
+        # {"flutterSdkVersion": "X.Y.Z"}. Accept either key, preferring "flutter"
+        # for backward compatibility.
+        import json
+        fvm = json.loads((root / ".fvm/fvm_config.json").read_text())
+        flutter_fvm = fvm.get("flutter") or fvm.get("flutterSdkVersion")
+        if flutter_fvm is None:
+            errs.append(
+                "fvm_config.json: neither 'flutter' nor 'flutterSdkVersion' key present"
+            )
+
+        # ── settings.gradle.kts inline plugin versions (TD-C5 fix) ────────────
+        # The `plugins {}` block in settings.gradle.kts must declare AGP + Kotlin
+        # inline (Gradle parses settings before the version catalog is available).
+        # The DSL syntax is:  id("com.android.application")  version "8.7.3"  apply false
+        settings = (root / "android/settings.gradle.kts").read_text()
+        m_agp = re.search(
+            r'id\(\s*"com\.android\.application"\s*\)\s+version\s+"([\d.]+)"',
+            settings,
+        )
+        m_kt = re.search(
+            r'id\(\s*"org\.jetbrains\.kotlin\.android"\s*\)\s+version\s+"([\d.]+)"',
+            settings,
+        )
+        agp_inline = m_agp.group(1) if m_agp else None
+        kt_inline = m_kt.group(1) if m_kt else None
+        if agp_inline is None:
+            errs.append("settings.gradle.kts: AGP version not found (expected id(\"com.android.application\") version \"...\")")
+        elif agp_inline != agp:
+            errs.append(f"AGP version mismatch: toml={agp}, settings.gradle.kts inline={agp_inline}")
+        if kt_inline is None:
+            errs.append("settings.gradle.kts: Kotlin version not found (expected id(\"org.jetbrains.kotlin.android\") version \"...\")")
+        elif kt_inline != kotlin:
+            errs.append(f"Kotlin version mismatch: toml={kotlin}, settings.gradle.kts inline={kt_inline}")
+
+        # ── ci/Dockerfile ──
+        dockerfile = (root / "ci/Dockerfile").read_text()
+        m_py = re.search(r"PYTHON_VERSION=(\d+\.\d+)", dockerfile)
+        if not m_py:
+            errs.append("Dockerfile: PYTHON_VERSION not found")
+        else:
+            docker_py = m_py.group(1)
+            if docker_py != python_toml:
+                errs.append(f"Python version mismatch: toml={python_toml}, Docker={docker_py}")
+
+        m_fl = re.search(r"FLUTTER_VERSION=(\d+\.\d+\.\d+)", dockerfile)
+        if not m_fl:
+            errs.append("Dockerfile: FLUTTER_VERSION not found")
+        else:
+            docker_fl = m_fl.group(1)
+            if docker_fl != flutter_fvm:
+                errs.append(f"Flutter version mismatch: fvm={flutter_fvm}, Docker={docker_fl}")
+
+        # ── AGP x Gradle compatibility (ADR-013) ──
+        # AGP 8.7 requires Gradle 8.9+
+        agp_major = int(agp.split(".")[0])
+        agp_minor = int(agp.split(".")[1])
+        gradle_major = int(gradle_toml.split(".")[0])
+        gradle_minor = int(gradle_toml.split(".")[1])
+        if agp_major == 8 and agp_minor == 7:
+            if (gradle_major, gradle_minor) < (8, 9):
+                errs.append(f"AGP {agp} requires Gradle >= 8.9; got {gradle_toml}")
+        elif agp_major == 8 and agp_minor == 5:
+            if (gradle_major, gradle_minor) < (8, 7):
+                errs.append(f"AGP {agp} requires Gradle >= 8.7; got {gradle_toml}")
+
+        # ── Kotlin x KSP compatibility ──
+        ksp = toml["versions"]["ksp"]
+        ksp_kotlin = ksp.split("-")[0]
+        if ksp_kotlin != kotlin:
+            errs.append(f"KSP pinned to {ksp_kotlin} but Kotlin is {kotlin}")
+
+        if errs:
+            print("❌ Version matrix verification FAILED:")
+            for e in errs:
+                print(f"  - {e}")
+            sys.exit(1)
+        else:
+            print("✅ Version matrix consistent:")
+            print(f"   Flutter:    {flutter_fvm}  (fvm_config.json: {'flutter' if 'flutter' in fvm else 'flutterSdkVersion'})")
+            print(f"   AGP:        {agp}  (libs.versions.toml + settings.gradle.kts inline)")
+            print(f"   Gradle:     {gradle_toml}  (libs.versions.toml + gradle-wrapper.properties)")
+            print(f"   Kotlin:     {kotlin}  (libs.versions.toml + settings.gradle.kts inline)")
+            print(f"   KSP:        {ksp}")
+            print(f"   Chaquopy:   {chaquopy}  (declared in catalog; NOT applied in Phase 0 — D-4 deviation)")
+            print(f"   Python:     {python_toml}  (libs.versions.toml + ci/Dockerfile)")
+        PYEOF

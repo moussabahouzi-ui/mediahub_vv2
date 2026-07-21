@@ -1,0 +1,81 @@
+# =============================================================================
+# MediaHub v2 — Python project metadata
+# Authority: ADR-007 (embedded Python), ADR-014 (reproducibility)
+# =============================================================================
+# Phase 0: project metadata only. No runtime deps yet.
+# When feature phases add deps, they MUST be added to requirements.lock
+# (NOT requirements.txt) and verified by the wheel-fingerprint CI step.
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mediahub-python"
+version = "0.0.1"
+description = "MediaHub v2 — embedded Python runtime (ML pipelines)."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "MediaHub v2 Engineering" }]
+
+# Phase 0: NO runtime dependencies. Feature phases pin them in
+# requirements.lock and reference via Chaquopy's `pip install -r`.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-cov>=5.0,<6.0",
+    "ruff>=0.6.0,<0.7.0",
+    "mypy>=1.11,<2.0",
+]
+
+[tool.setuptools]
+packages = ["mediahub"]
+
+# ── pytest ──────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "integration: requires embedded runtime (deselect with -m 'not integration')",
+]
+
+# ── ruff (lint + format) ────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["mediahub", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pycodestyle / pyflakes
+    "I",             # isort
+    "B",             # bugbear
+    "UP",            # pyupgrade
+    "RUF",           # ruff-specific
+]
+ignore = ["E501"]   # line length handled by formatter
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── mypy ───────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false

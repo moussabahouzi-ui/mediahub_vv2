@@ -1,0 +1,89 @@
+# =============================================================================
+# MediaHub v2 — Melos configuration
+# Authority: SAD ADR-002 (package layout), ADR-004 (code-gen), ADR-015 (CI)
+# =============================================================================
+name: mediahub_v2
+
+repository: https://github.com/mediahub/mediahub_v2
+
+# All packages under packages/ + the app itself are managed by melos.
+packages:
+  - packages/**
+  - .
+
+command:
+  bootstrap:
+    # Force pub to use the committed lockfile — no implicit upgrades.
+    runPubGetInParallel: true
+    # Enforce dependency version convergence across packages.
+    enforceLockfile: true
+
+scripts:
+  # ── Code generation (ADR-004) ──────────────────────────────────────────────
+  # Single deterministic entry point. CI runs the same command (gen-check).
+  gen:
+    description: "Run build_runner across all packages (deterministic)."
+    run: |
+      dart pub get
+      dart run build_runner build \
+        --delete-conflicting-outputs \
+        --low-resources-mode \
+        --release
+
+  gen:clean:
+    description: "Clean build_runner outputs."
+    run: dart run build_runner clean
+
+  # ── Analysis (ADR-002/015) ──────────────────────────────────────────────────
+  # TD-C3 fix (Architecture Review Gate): `import_lint` was removed in
+  # Bootstrap Validation (D-1 deviation). The ADR-002 dependency rule is now
+  # enforced by `tools/check_imports.sh` (grep-based). Phase 1 will replace
+  # this with a proper custom_lint plugin.
+  analyze:
+    description: "flutter analyze + custom_lint + ADR-002 import check across all packages."
+    run: |
+      melos exec -- \
+        "flutter analyze ."
+      dart run custom_lint
+      bash tools/check_imports.sh
+
+  # ── Formatting ───────────────────────────────────────────────────────────────
+  format:
+    description: "Apply dart format."
+    run: dart format .
+
+  format:check:
+    description: "Verify dart format compliance (CI)."
+    run: dart format --set-exit-if-changed .
+
+  # ── Tests (ADR-017) ───────────────────────────────────────────────────────────
+  test:unit:
+    description: "Pure-Dart + Flutter unit tests."
+    run: melos exec --fail-fast -- "\$MELOS_ROOT_PATH/test" --exclude-tags=integration
+    # (real impl: flutter test per package)
+
+  test:widget:
+    description: "Widget tests in app/test."
+    run: flutter test test/
+
+  test:integration:
+    description: "integration_test suite (smoke on AVD)."
+    run: flutter test integration_test/
+
+  # ── Build (ADR-014/016) ────────────────────────────────────────────────────
+  build:debug:
+    description: "Debug APK."
+    run: flutter build apk --debug
+
+  build:release:
+    description: "Release APK (unsigned, inside pinned image only)."
+    run: flutter build apk --release
+
+  build:appbundle:
+    description: "Release AAB (Play format)."
+    run: flutter build appbundle --release
+
+# Concurrency: parallelise independent packages.
+ide:
+  intellij:
+    enabled: false

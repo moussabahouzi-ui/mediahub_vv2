@@ -1,0 +1,28 @@
+# MediaHub v2 — packages/sync_engine
+# Authority: ADR-006 (background isolate + persistent queue)
+name: mediahub_sync_engine
+description: "MediaHub v2 — offline-first sync engine (queue + scheduler)."
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0 <3.30.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mediahub_domain:
+    path: ../domain
+  drift: ^2.21.0
+  sqlite3_flutter_libs: ^0.5.27
+  workmanager: ^0.5.2
+  path: ^1.9.0
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.13
+  drift_dev: ^2.21.0
+  mocktail: ^1.0.4

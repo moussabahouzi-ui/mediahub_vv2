@@ -1,0 +1,6 @@
+# melos_managed_dependency_overrides: mediahub_domain,mediahub_python_bridge
+dependency_overrides:
+  mediahub_domain:
+    path: ../domain
+  mediahub_python_bridge:
+    path: ../python_bridge

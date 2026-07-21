@@ -1,0 +1,55 @@
+# =============================================================================
+# MediaHub v2 — Reusable workflow: build (ADR-014/016)
+# =============================================================================
+# Builds debug + release APK. Release is unsigned in Phase 0 (no signing
+# secrets in this workflow); ADR-016 release workflow handles signing.
+name: _reusable-build
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        description: "debug | release"
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build ${{ inputs.build-type }} APK
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+      - uses: ./.github/actions/setup-java
+      - uses: ./.github/actions/setup-python
+
+      - uses: ./.github/actions/verify-versions
+
+      - name: melos bootstrap
+        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
+
+      - name: Run codegen (ADR-004)
+        run: bash tools/gen.sh
+
+      - name: Build ${{ inputs.build-type }} APK
+        run: fvm flutter build apk --${{ inputs.build-type }}
+
+      - name: Verify APK produced
+        run: |
+          ls -la build/app/outputs/flutter-apk/
+          APK=$(find build/app/outputs/flutter-apk -name "*.apk" | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::No APK produced"
+            exit 1
+          fi
+          echo "Produced: $APK"
+          # Hash for reproducibility audit (ADR-014)
+          sha256sum "$APK"
+
+      - name: Upload APK artefact
+        if: ${{ inputs.build-type == 'release' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediahub-release-apk-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 14

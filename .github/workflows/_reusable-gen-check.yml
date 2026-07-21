@@ -1,0 +1,37 @@
+# =============================================================================
+# MediaHub v2 — Reusable workflow: code generation check (ADR-004/015)
+# =============================================================================
+# Runs build_runner + pigeon with --delete-conflicting-outputs and asserts
+# the working tree is clean afterwards. This is the structural defence
+# against v1's "missing generated files" failure.
+name: _reusable-gen-check
+on:
+  workflow_call:
+
+jobs:
+  gen-check:
+    name: Generated-files check
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: melos bootstrap
+        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
+
+      - name: Run build_runner + pigeon
+        run: bash tools/gen.sh
+
+      - name: Verify working tree is clean
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated files are out of date. Run 'bash tools/gen.sh' and commit the result."
+            git diff --stat
+            exit 1
+          fi
+        env:
+          GIT_AUTHOR_NAME: ci
+          GIT_AUTHOR_EMAIL: ci@mediahub.local
+          GIT_COMMITTER_NAME: ci
+          GIT_COMMITTER_EMAIL: ci@mediahub.local

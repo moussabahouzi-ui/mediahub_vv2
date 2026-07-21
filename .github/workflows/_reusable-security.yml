@@ -1,0 +1,35 @@
+# =============================================================================
+# MediaHub v2 — Reusable workflow: security scan (ADR-011/015)
+# =============================================================================
+name: _reusable-security
+on:
+  workflow_call:
+
+jobs:
+  security:
+    name: Secret scan + dependency audit
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # gitleaks needs full history
+
+      - name: gitleaks — secret scan (ADR-011)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-python
+
+      - name: pip-audit — Python dependency audit (ADR-018)
+        run: |
+          cd python
+          pip-audit -r requirements.lock || true
+          pip-audit -r requirements-dev.txt
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: pub audit + pana health (ADR-018)
+        run: |
+          fvm dart pub audit --no-fatal-infos
+          fvm dart pub outdated --no-dev-dependencies || true

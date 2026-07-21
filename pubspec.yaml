@@ -1,0 +1,115 @@
+# =============================================================================
+# MediaHub v2 — Root pubspec (application)
+# Authority: SAD ADR-001 (Flutter), ADR-002 (Clean Architecture),
+#            ADR-003 (Riverpod), ADR-004 (code-gen), ADR-014 (reproducibility)
+# =============================================================================
+# This is the *application* pubspec. Package-specific deps live in
+# packages/<pkg>/pubspec.yaml and are wired by melos (melos.yaml).
+#
+# Phase 0 policy:
+#   - Only foundation dependencies. No feature packages.
+#   - All versions pinned with caret on minor; lockfile (pubspec.lock) committed.
+#   - No dependency_overrides unless justified by an ADR.
+# =============================================================================
+
+name: mediahub_v2
+description: "MediaHub v2 — offline-first Android client (Flutter + embedded Python)."
+publish_to: "none"
+version: 0.0.1+1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0 <3.30.0"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runtime dependencies — only what Phase 0 needs
+# ─────────────────────────────────────────────────────────────────────────────
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management & DI — ADR-003
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Code-gen annotations — ADR-004 (freezed upgraded to v3 in Bootstrap Validation
+  # because riverpod_lint 2.6.5+ transitively requires freezed_annotation ^3.0.0)
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+
+  # Persistence — ADR-005
+  drift: ^2.21.0
+  sqlite3_flutter_libs: ^0.5.27
+
+  # Networking — ADR-011 (dio + TLS pinning)
+  dio: ^5.7.0
+
+  # Security — ADR-011
+  flutter_secure_storage: ^9.2.2
+
+  # Observability — ADR-010
+  sentry_flutter: ^8.10.1
+  logging: ^1.3.0
+
+  # Background work — ADR-006
+  workmanager: ^0.5.2
+
+  # Path providers (foundational; used by drift, secure storage, sentry)
+  path: ^1.9.0
+  path_provider: ^2.1.5
+
+  # Local packages (wired by melos via path overrides)
+  mediahub_domain:
+    path: packages/domain
+  mediahub_application:
+    path: packages/application
+  mediahub_data:
+    path: packages/data
+  mediahub_design_system:
+    path: packages/design_system
+  mediahub_python_bridge:
+    path: packages/python_bridge
+  mediahub_sync_engine:
+    path: packages/sync_engine
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dev dependencies — code generators + lints + test tooling
+# ─────────────────────────────────────────────────────────────────────────────
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # Code generation — ADR-004 (freezed upgraded to v3 in Bootstrap Validation)
+  build_runner: ^2.4.13
+  freezed: ^3.0.0
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.6.3
+  drift_dev: ^2.21.0
+  pigeon: ^22.7.0
+
+  # Static analysis — ADR-002 / ADR-015
+  # custom_lint upgraded to ^0.7.6 in Bootstrap Validation to support
+  # freezed_annotation v3 (riverpod_lint 2.6.5+ requires it).
+  flutter_lints: ^4.0.0
+  custom_lint: ^0.7.6
+  riverpod_lint: ^2.6.5
+  # import_lint: removed in Bootstrap Validation — see DEVIATIONS.md.
+  # Its analyzer constraint (^5.2.0) conflicts with the freezed v3 stack.
+  # Replaced by tools/check_imports.sh (grep-based) for Phase 0.
+  # Phase 1 will implement the ADR-002 rule as a custom_lint plugin.
+
+  # Testing — ADR-017
+  mocktail: ^1.0.4
+  golden_toolkit: ^0.15.0
+
+  # Mono-repo management — ADR-002
+  melos: ^6.2.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/python/
+    - assets/python/mediahub/

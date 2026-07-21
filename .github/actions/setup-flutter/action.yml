@@ -1,0 +1,38 @@
+# =============================================================================
+# MediaHub v2 — Composite action: Flutter setup (ADR-014)
+# =============================================================================
+# Pinned Flutter SDK via fvm. Cached pub-cache keyed on pubspec.lock hash.
+name: setup-flutter
+description: "Install pinned Flutter SDK + restore pub cache"
+inputs:
+  pubspec-lock-path:
+    description: "Path to pubspec.lock (for cache key)"
+    required: false
+    default: "pubspec.lock"
+runs:
+  using: composite
+  steps:
+    - name: Setup fvm
+      uses: flutter-actions/setup-fvm@v3
+      with:
+        config: .fvm/fvm_config.json
+
+    - name: Configure Flutter (no analytics)
+      shell: bash
+      run: |
+        fvm flutter config --no-analytics
+        fvm dart --disable-analytics
+
+    - name: Cache pub packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.pub-cache
+          .dart_tool
+        key: pub-${{ runner.os }}-${{ hashFiles(inputs.pubspec-lock-path) }}
+        restore-keys: |
+          pub-${{ runner.os }}-
+
+    - name: Flutter doctor
+      shell: bash
+      run: fvm flutter doctor -v

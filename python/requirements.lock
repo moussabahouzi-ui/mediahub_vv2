@@ -1,0 +1,18 @@
+# =============================================================================
+# MediaHub v2 — Python requirements LOCK
+# Authority: ADR-007 (embedded Python), ADR-014 (reproducibility)
+# =============================================================================
+# Phase 0: empty. No third-party Python deps yet.
+#
+# When feature phases add deps:
+#   1. Add the package name + EXACT pinned version here (with hash).
+#   2. Re-resolve with `pip-compile` to refresh transitive deps.
+#   3. Reference this file from android/app/build.gradle.kts Chaquopy block.
+#   4. The CI wheel-fingerprint check (ADR-015) verifies no drift.
+#
+# Every line must include a sha256 hash so installs are reproducible:
+#   package==X.Y.Z \
+#       --hash=sha256:abc... \
+#       --hash=sha256:def...
+#
+# (No entries in Phase 0.)

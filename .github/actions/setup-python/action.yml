@@ -1,0 +1,35 @@
+# =============================================================================
+# MediaHub v2 — Composite action: Python setup (ADR-007/014)
+# =============================================================================
+# Python 3.11 + dev tooling (pytest, ruff, mypy, pip-audit). Cached venv.
+name: setup-python
+description: "Install Python 3.11 + dev deps + restore cache"
+inputs:
+  requirements-path:
+    description: "Path to requirements-dev.txt"
+    required: false
+    default: "python/requirements-dev.txt"
+runs:
+  using: composite
+  steps:
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: pip
+        cache-dependency-path: ${{ inputs.requirements-path }}
+
+    - name: Install Python dev deps
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r "${{ inputs.requirements-path }}"
+
+    - name: Show versions
+      shell: bash
+      run: |
+        python --version
+        pytest --version
+        ruff --version
+        mypy --version
+        pip-audit --version

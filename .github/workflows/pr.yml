@@ -1,0 +1,36 @@
+# =============================================================================
+# MediaHub v2 — PR workflow (ADR-015)
+# =============================================================================
+# Required checks for every PR. Branch protection enforces these.
+name: pr
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gen-check:
+    name: Generated-files check
+    uses: ./.github/workflows/_reusable-gen-check.yml
+
+  lint:
+    name: Lint + analyzer + ADR-002 import check
+    uses: ./.github/workflows/_reusable-lint.yml
+
+  test:
+    name: Tests (Dart + Python)
+    uses: ./.github/workflows/_reusable-test.yml
+
+  build-debug:
+    name: Build debug APK
+    uses: ./.github/workflows/_reusable-build.yml
+    with:
+      build-type: debug
+
+  security:
+    name: Secret scan + audit
+    uses: ./.github/workflows/_reusable-security.yml
