@@ -12,10 +12,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup fvm
-      uses: flutter-actions/setup-fvm@v2
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
       with:
-        config: .fvm/fvm_config.json
+        channel: 'stable'
+        cache: true
+
+    - name: Install FVM CLI
+      shell: bash
+      run: dart pub global activate fvm
 
     - name: Configure Flutter (no analytics)
       shell: bash
