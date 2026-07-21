@@ -13,7 +13,7 @@ runs:
   using: composite
   steps:
     - name: Setup fvm
-      uses: flutter-actions/setup-fvm@v3
+      uses: flutter-actions/setup-fvm@v2
       with:
         config: .fvm/fvm_config.json
 
