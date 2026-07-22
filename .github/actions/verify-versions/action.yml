@@ -23,23 +23,18 @@ runs:
       with:
         python-version: '3.11'
 
-    - name: Verify version matrix
+    - name: Create verification script
       shell: bash
       run: |
-        set -euo pipefail
-        echo "==> Verifying version matrix (ADR-013)..."
-        python3 <<'PYEOF'
+        cat <<'EOF' > verify.py
         import re, sys, json, tomllib
         from pathlib import Path
-        # ... (باقي الكود الخاص بك كما هو لا تغيره) ...
-        # (فقط تأكد أنك نسخت باقي الكود بالكامل تحت هذا السطر)
-        # ...
-        PYEOF
 
         root = Path(".")
         errs = []
 
         # ── libs.versions.toml ──
+        # (باقي كود البايثون الخاص بك كما هو بالتمام)
         toml = tomllib.loads((root / "android/gradle/libs.versions.toml").read_text())
         agp = toml["versions"]["agp"]
         kotlin = toml["versions"]["kotlin"]
@@ -47,7 +42,7 @@ runs:
         chaquopy = toml["versions"]["chaquopy"]
         python_toml = toml["versions"]["python"]
 
-        # ── gradle-wrapper.properties ──
+         # ── gradle-wrapper.properties ──
         wrapper = (root / "android/gradle/wrapper/gradle-wrapper.properties").read_text()
         m = re.search(r"gradle-(\d+\.\d+\.\d+)-bin\.zip", wrapper)
         if not m:
@@ -145,3 +140,19 @@ runs:
             print(f"   Chaquopy:   {chaquopy}  (declared in catalog; NOT applied in Phase 0 — D-4 deviation)")
             print(f"   Python:     {python_toml}  (libs.versions.toml + ci/Dockerfile)")
         PYEOF
+
+        
+        if errs:
+            print("❌ Version matrix verification FAILED:")
+            for e in errs:
+                print(f"  - {e}")
+            sys.exit(1)
+        else:
+            print("✅ Version matrix consistent.")
+        EOF
+
+    - name: Run verification script
+      shell: bash
+      run: python3 verify.py
+
+       
