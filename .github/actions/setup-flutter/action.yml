@@ -1,8 +1,8 @@
 # =============================================================================
 # MediaHub v2 — Composite action: Flutter setup (ADR-014)
 # =============================================================================
-# Pinned Flutter SDK via fvm. Cached pub-cache keyed on pubspec.lock hash.
-# Adds fvm + pub-cache bin to PATH so bare `dart`/`flutter`/`melos` work.
+# Pinned Flutter SDK via fvm config. Cached pub-cache keyed on pubspec.lock hash.
+# Adds pub-cache bin to PATH so globally activated packages (melos) work.
 name: setup-flutter
 description: "Install pinned Flutter SDK + restore pub cache + add to PATH"
 inputs:
@@ -13,16 +13,17 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup fvm
-      uses: flutter-actions/setup-fvm@v3
+    - name: Setup Flutter via FVM config
+      uses: kuhnroyal/flutter-fvm-config-action/setup@v3
       with:
-        config: .fvm/fvm_config.json
+        path: '.fvm/fvm_config.json' # تحديد مسار ملف الإعدادات الخاص بك بدقة
 
     - name: Configure Flutter (no analytics)
       shell: bash
       run: |
-        fvm flutter config --no-analytics
-        fvm dart --disable-analytics
+        # تم إزالة fvm من هنا لأن Flutter أصبح متاحاً بشكل مباشر في النظام
+        flutter config --no-analytics
+        dart --disable-analytics
 
     - name: Cache pub packages
       uses: actions/cache@v4
@@ -34,14 +35,12 @@ runs:
         restore-keys: |
           pub-${{ runner.os }}-
 
-    - name: Add fvm + pub-cache bin to PATH
+    - name: Add pub-cache bin to PATH
       shell: bash
       run: |
-        # Add fvm's Flutter bin to PATH so bare `dart`/`flutter` work
-        echo "$HOME/fvm/default/bin" >> $GITHUB_PATH
-        # Add pub-cache bin so globally activated packages (melos) work
+        # إضافة مسار الحزم (pub-cache) فقط لضمان عمل أدوات مثل melos
         echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
     - name: Flutter doctor
       shell: bash
-      run: fvm flutter doctor -v
+      run: flutter doctor -v
