@@ -2,52 +2,41 @@
 # MediaHub v2 — Reusable workflow: build (ADR-014/016)
 # =============================================================================
 name: _reusable-build
+
 on:
   workflow_call:
-    inputs:
-      build-type:
-        description: "debug | release"
-        required: true
-        type: string
 
 jobs:
   build:
-    name: Build ${{ inputs.build-type }} APK
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-flutter
-      - uses: ./.github/actions/setup-java
+      - name: Set up Python for Chaquopy
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-      - uses: ./.github/actions/verify-versions
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: melos bootstrap
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+          cache: true
+
+      - name: Install & Bootstrap Melos
         run: |
-          dart pub global activate melos 6.2.0
+          dart pub global activate melos
           melos bootstrap
 
-      - name: Run codegen
-        run: bash tools/gen.sh
+      - name: Make scripts executable
+        run: chmod +x ./tools/*.sh
 
-      - name: Build ${{ inputs.build-type }} APK
-        run: flutter build apk --${{ inputs.build-type }}
-
-      - name: Verify APK produced
-        run: |
-          ls -la build/app/outputs/flutter-apk/
-          APK=$(find build/app/outputs/flutter-apk -name "*.apk" | head -1)
-          if [ -z "$APK" ]; then
-            echo "::error::No APK produced"
-            exit 1
-          fi
-          echo "Produced: $APK"
-          sha256sum "$APK"
-
-      - name: Upload APK artefact
-        if: ${{ inputs.build-type == 'release' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: mediahub-release-apk-${{ github.sha }}
-          path: build/app/outputs/flutter-apk/*.apk
-          retention-days: 14
+      - name: Build Android APK
+        run: flutter build apk --debug

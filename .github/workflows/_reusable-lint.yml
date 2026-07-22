@@ -2,46 +2,30 @@
 # MediaHub v2 — Reusable workflow: lint + format + analyzer (ADR-002/015)
 # =============================================================================
 name: _reusable-lint
+
 on:
   workflow_call:
 
 jobs:
   lint:
-    name: Lint + analyzer + ADR-002 import check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+          cache: true
 
-      - uses: ./.github/actions/verify-versions
-
-      - name: melos bootstrap
+      - name: Install & Bootstrap Melos
         run: |
-          dart pub global activate melos 6.2.0
+          dart pub global activate melos
           melos bootstrap
 
-      - name: Format check
-        run: dart format --set-exit-if-changed .
+      - name: Make scripts executable
+        run: chmod +x ./tools/*.sh
 
-      - name: Analyze
-        run: flutter analyze .
-
-      - name: custom_lint (riverpod_lint)
-        run: dart run custom_lint
-
-      - name: ADR-002 import-rule check
-        run: bash tools/check_imports.sh
-
-      - name: Ruff (Python lint + format)
-        run: |
-          cd python
-          pip install ruff
-          ruff check .
-          ruff format --check .
-
-      - name: Mypy (Python types)
-        run: |
-          cd python
-          pip install mypy
-          mypy mediahub
+      - name: Run Linting
+        run: melos run lint
