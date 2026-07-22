@@ -2,36 +2,59 @@
 # MediaHub v2 — Reusable workflow: tests (ADR-017)
 # =============================================================================
 name: _reusable-test
-
 on:
   workflow_call:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  dart-unit:
+    name: Dart unit tests
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.3'
-          cache: true
-
-      - name: Install & Bootstrap Melos
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+      - uses: ./.github/actions/verify-versions
+      - name: melos bootstrap
         run: |
-          dart pub global activate melos
+          dart pub global activate melos 6.2.0
           melos bootstrap
+      - name: Run unit tests
+        run: |
+          flutter test packages/domain/test
+          flutter test packages/data/test
+          flutter test packages/application/test
+          flutter test packages/sync_engine/test
+          flutter test packages/python_bridge/test
+          flutter test packages/design_system/test
 
-      - name: Make scripts executable
-        run: chmod +x ./tools/*.sh
+  widget:
+    name: Widget tests (app)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+      - uses: ./.github/actions/verify-versions
+      - name: melos bootstrap
+        run: |
+          dart pub global activate melos 6.2.0
+          melos bootstrap
+      - name: Run widget tests
+        run: flutter test test/
 
-      - name: Run Tests
-        run: melos run test
+  python:
+    name: Python pytest
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install mediahub package + test deps
+        run: |
+          cd python
+          pip install -e .
+          pip install pytest pytest-cov
+      - name: Run pytest
+        run: |
+          cd python
+          pytest -v --cov=mediahub --cov-report=term-missing
