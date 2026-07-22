@@ -18,7 +18,9 @@ jobs:
       - uses: ./.github/actions/setup-flutter
 
       - name: melos bootstrap
-        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
+        run: |
+          dart pub global activate melos 6.2.0
+          melos bootstrap
 
       - name: Run build_runner + pigeon
         run: bash tools/gen.sh
@@ -30,8 +32,3 @@ jobs:
             git diff --stat
             exit 1
           fi
-        env:
-          GIT_AUTHOR_NAME: ci
-          GIT_AUTHOR_EMAIL: ci@mediahub.local
-          GIT_COMMITTER_NAME: ci
-          GIT_COMMITTER_EMAIL: ci@mediahub.local

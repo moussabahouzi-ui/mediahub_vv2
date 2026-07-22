@@ -7,22 +7,24 @@ on:
 
 jobs:
   dart-unit:
-    name: Dart unit tests (domain + data + application)
+    name: Dart unit tests
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-flutter
       - uses: ./.github/actions/verify-versions
       - name: melos bootstrap
-        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
-      - name: Run unit tests (domain + data + application + sync_engine)
         run: |
-          fvm flutter test packages/domain/test
-          fvm flutter test packages/data/test
-          fvm flutter test packages/application/test
-          fvm flutter test packages/sync_engine/test
-          fvm flutter test packages/python_bridge/test
-          fvm flutter test packages/design_system/test
+          dart pub global activate melos 6.2.0
+          melos bootstrap
+      - name: Run unit tests
+        run: |
+          flutter test packages/domain/test
+          flutter test packages/data/test
+          flutter test packages/application/test
+          flutter test packages/sync_engine/test
+          flutter test packages/python_bridge/test
+          flutter test packages/design_system/test
 
   widget:
     name: Widget tests (app)
@@ -32,20 +34,26 @@ jobs:
       - uses: ./.github/actions/setup-flutter
       - uses: ./.github/actions/verify-versions
       - name: melos bootstrap
-        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
+        run: |
+          dart pub global activate melos 6.2.0
+          melos bootstrap
       - name: Run widget tests
-        run: fvm flutter test test/
+        run: flutter test test/
 
   python:
     name: Python pytest
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-python
-      - name: Install mediahub package (editable)
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install mediahub package + test deps
         run: |
           cd python
           pip install -e .
+          pip install pytest pytest-cov
       - name: Run pytest
         run: |
           cd python

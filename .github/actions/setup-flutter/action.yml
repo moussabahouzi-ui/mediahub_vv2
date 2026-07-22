@@ -2,8 +2,9 @@
 # MediaHub v2 — Composite action: Flutter setup (ADR-014)
 # =============================================================================
 # Pinned Flutter SDK via fvm. Cached pub-cache keyed on pubspec.lock hash.
+# Adds fvm + pub-cache bin to PATH so bare `dart`/`flutter`/`melos` work.
 name: setup-flutter
-description: "Install pinned Flutter SDK + restore pub cache"
+description: "Install pinned Flutter SDK + restore pub cache + add to PATH"
 inputs:
   pubspec-lock-path:
     description: "Path to pubspec.lock (for cache key)"
@@ -12,15 +13,10 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
+    - name: Setup fvm
+      uses: flutter-actions/setup-fvm@v3
       with:
-        channel: 'stable'
-        cache: true
-
-    - name: Install FVM CLI
-      shell: bash
-      run: dart pub global activate fvm
+        config: .fvm/fvm_config.json
 
     - name: Configure Flutter (no analytics)
       shell: bash
@@ -37,6 +33,14 @@ runs:
         key: pub-${{ runner.os }}-${{ hashFiles(inputs.pubspec-lock-path) }}
         restore-keys: |
           pub-${{ runner.os }}-
+
+    - name: Add fvm + pub-cache bin to PATH
+      shell: bash
+      run: |
+        # Add fvm's Flutter bin to PATH so bare `dart`/`flutter` work
+        echo "$HOME/fvm/default/bin" >> $GITHUB_PATH
+        # Add pub-cache bin so globally activated packages (melos) work
+        echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
     - name: Flutter doctor
       shell: bash
