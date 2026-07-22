@@ -18,6 +18,11 @@ description: "Cross-check the version matrix across config files"
 runs:
   using: composite
   steps:
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
     - name: Verify version matrix
       shell: bash
       run: |
@@ -26,6 +31,10 @@ runs:
         python3 <<'PYEOF'
         import re, sys, json, tomllib
         from pathlib import Path
+        # ... (باقي الكود الخاص بك كما هو لا تغيره) ...
+        # (فقط تأكد أنك نسخت باقي الكود بالكامل تحت هذا السطر)
+        # ...
+        PYEOF
 
         root = Path(".")
         errs = []
