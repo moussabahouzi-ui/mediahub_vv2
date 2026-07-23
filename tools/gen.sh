@@ -13,7 +13,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "==> melos bootstrap (resolves packages + lockfile)"
-melos bootstrap
+# استخدام fvm لتجنب تعارض إصدارات Kernel binary وإضافة خيار الـ lockfile
+fvm exec melos bootstrap --no-enforce-lockfile
 
 echo "==> dart run build_runner (per-package via melos exec)"
 # Run only in packages that have build_runner as a dev_dependency
@@ -21,20 +22,20 @@ for pkg in domain data application; do
   if [ -f "packages/$pkg/pubspec.yaml" ]; then
     echo "  -> packages/$pkg"
     (cd "packages/$pkg" && \
-     dart run build_runner build --delete-conflicting-outputs --low-resources-mode)
+      fvm dart run build_runner build --delete-conflicting-outputs --low-resources-mode)
   fi
 done
 
 echo "==> dart run build_runner (root app)"
-dart run build_runner build --delete-conflicting-outputs --low-resources-mode || true
+fvm dart run build_runner build --delete-conflicting-outputs --low-resources-mode || true
 
 echo "==> dart run pigeon (generates python_bridge bindings)"
 cd packages/python_bridge
-dart run pigeon --input pigeons/api.dart
+fvm dart run pigeon --input pigeons/api.dart
 cd -
 
 echo "==> format generated code"
-dart format \
+fvm dart format \
   packages/domain/lib/src/entities/*.g.dart \
   packages/domain/lib/src/entities/*.freezed.dart \
   packages/python_bridge/lib/src/messages.g.dart 2>/dev/null || true
