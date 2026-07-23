@@ -81,3 +81,4 @@ gha-creds-*.json
 
 # FVM Version Cache
 .fvm/
+local.properties

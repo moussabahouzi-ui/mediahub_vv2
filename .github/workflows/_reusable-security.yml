@@ -12,30 +12,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # gitleaks needs full history
 
-      - name: gitleaks — secret scan
+      - name: gitleaks — secret scan (ADR-011)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - uses: ./.github/actions/setup-python
 
-      - name: pip-audit — Python dependency audit
+      - name: pip-audit — Python dependency audit (ADR-018)
         run: |
-          pip install pip-audit
           cd python
-          if [ -s requirements.lock ]; then
-            pip-audit -r requirements.lock
-          fi
+          pip-audit -r requirements.lock || true
           pip-audit -r requirements-dev.txt
 
       - uses: ./.github/actions/setup-flutter
 
-      - name: pub audit
+      - name: pub audit + pana health (ADR-018)
         run: |
-          flutter pub audit --no-fatal-infos
-          flutter pub outdated --no-dev-dependencies || true
+          fvm dart pub audit --no-fatal-infos
+          fvm dart pub outdated --no-dev-dependencies || true

@@ -2,9 +2,8 @@
 # MediaHub v2 — Composite action: Java setup (ADR-014)
 # =============================================================================
 # Temurin JDK 17. Pinned. Compatible with AGP 8.7.x and Gradle 8.11.x.
-# Includes Python setup for Chaquopy Gradle plugin compilation.
 name: setup-java
-description: "Install Temurin JDK 17, Python 3.11 (for Chaquopy), and cache Gradle deps"
+description: "Install Temurin JDK 17 + cache Gradle deps"
 inputs:
   gradle-cache-key:
     description: "Cache key suffix (defaults to libs.versions.toml hash)"
@@ -18,11 +17,6 @@ runs:
       with:
         distribution: temurin
         java-version: "17"
-
-    - name: Setup Python for Chaquopy
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
 
     - name: Cache Gradle
       uses: actions/cache@v4

@@ -1,6 +1,10 @@
 # =============================================================================
 # MediaHub v2 — Reusable workflow: lint + format + analyzer (ADR-002/015)
 # =============================================================================
+# TD-C1/C2 fix (Architecture Review Gate): replaced the removed `import_lint`
+# step with `tools/check_imports.sh` — the grep-based ADR-002 dependency-rule
+# checker. This restores CI enforcement of the dependency rule that
+# import_lint used to provide (D-1 deviation in DEVIATIONS.md).
 name: _reusable-lint
 on:
   workflow_call:
@@ -17,31 +21,33 @@ jobs:
       - uses: ./.github/actions/verify-versions
 
       - name: melos bootstrap
-        run: |
-          dart pub global activate melos 6.2.0
-          melos bootstrap
+        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
 
-      - name: Format check
-        run: dart format --set-exit-if-changed .
+      - name: Format check (dart format --set-exit-if-changed)
+        run: fvm dart format --set-exit-if-changed .
 
-      - name: Analyze
-        run: flutter analyze .
+      - name: Analyze (flutter analyze)
+        run: fvm flutter analyze .
 
       - name: custom_lint (riverpod_lint)
-        run: dart run custom_lint
+        run: fvm dart run custom_lint
 
-      - name: ADR-002 import-rule check
+      # ── ADR-002 dependency rule (TD-C1 fix) ──────────────────────────────────
+      # `import_lint` was removed in Bootstrap Validation (D-1 deviation:
+      # analyzer version conflict with the freezed v3 stack). It is replaced
+      # by `tools/check_imports.sh` — a grep-based checker that reads the same
+      # rule definitions in packages/tooling/import_lint/config.yaml.
+      # Phase 1 will replace this with a proper custom_lint plugin.
+      - name: ADR-002 import-rule check (check_imports.sh)
         run: bash tools/check_imports.sh
 
       - name: Ruff (Python lint + format)
         run: |
           cd python
-          pip install ruff
           ruff check .
           ruff format --check .
 
       - name: Mypy (Python types)
         run: |
           cd python
-          pip install mypy
           mypy mediahub
