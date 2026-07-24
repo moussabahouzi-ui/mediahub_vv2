@@ -41,4 +41,3 @@ jobs:
     with:
       build-type: release
     # Phase 1+ (ADR-016) will replace this with the signed release pipeline
-    # that runs only on release/* branches inside the pinned Docker image.

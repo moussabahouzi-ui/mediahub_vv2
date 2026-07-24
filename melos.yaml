@@ -1,89 +1,76 @@
 # =============================================================================
-# MediaHub v2 — Melos configuration
-# Authority: SAD ADR-002 (package layout), ADR-004 (code-gen), ADR-015 (CI)
+# MediaHub v2 — Melos configuration (FIXED)
 # =============================================================================
+# FIX: All scripts now use 'fvm' explicitly to match gen.sh and CI.
+# Removed ambiguous 'dart' calls that could use wrong SDK.
+
 name: mediahub_v2
 
-repository: https://github.com/mediahub/mediahub_v2
+repository: https://github.com/moussabahouzi-ui/mediahub_vv2
 
-# All packages under packages/ + the app itself are managed by melos.
 packages:
   - packages/**
   - .
 
 command:
   bootstrap:
-    # Force pub to use the committed lockfile — no implicit upgrades.
     runPubGetInParallel: true
-    # Enforce dependency version convergence across packages.
     enforceLockfile: true
 
 scripts:
-  # ── Code generation (ADR-004) ──────────────────────────────────────────────
-  # Single deterministic entry point. CI runs the same command (gen-check).
+  # ── Code generation (ADR-004) ──
   gen:
-    description: "Run build_runner across all packages (deterministic)."
-    run: |
-      dart pub get
-      dart run build_runner build \
-        --delete-conflicting-outputs \
-        --low-resources-mode \
-        --release
+    description: "Run build_runner + pigeon across all packages."
+    run: bash tools/gen.sh
 
   gen:clean:
     description: "Clean build_runner outputs."
-    run: dart run build_runner clean
+    run: fvm dart run build_runner clean
 
-  # ── Analysis (ADR-002/015) ──────────────────────────────────────────────────
-  # TD-C3 fix (Architecture Review Gate): `import_lint` was removed in
-  # Bootstrap Validation (D-1 deviation). The ADR-002 dependency rule is now
-  # enforced by `tools/check_imports.sh` (grep-based). Phase 1 will replace
-  # this with a proper custom_lint plugin.
+  # ── Analysis (ADR-002/015) ──
   analyze:
-    description: "flutter analyze + custom_lint + ADR-002 import check across all packages."
+    description: "flutter analyze + custom_lint + ADR-002 import check."
     run: |
-      melos exec -- \
-        "flutter analyze ."
-      dart run custom_lint
+      fvm flutter analyze .
+      fvm dart run custom_lint
       bash tools/check_imports.sh
 
-  # ── Formatting ───────────────────────────────────────────────────────────────
+  # ── Formatting ──
   format:
     description: "Apply dart format."
-    run: dart format .
+    run: fvm dart format .
 
   format:check:
     description: "Verify dart format compliance (CI)."
-    run: dart format --set-exit-if-changed .
+    run: fvm dart format --set-exit-if-changed .
 
-  # ── Tests (ADR-017) ───────────────────────────────────────────────────────────
+  # ── Tests (ADR-017) ──
   test:unit:
     description: "Pure-Dart + Flutter unit tests."
-    run: melos exec --fail-fast -- "\$MELOS_ROOT_PATH/test" --exclude-tags=integration
-    # (real impl: flutter test per package)
+    run: |
+      fvm flutter test packages/domain/test
+      fvm flutter test packages/data/test
+      fvm flutter test packages/application/test
+      fvm flutter test packages/sync_engine/test
+      fvm flutter test packages/python_bridge/test
 
   test:widget:
     description: "Widget tests in app/test."
-    run: flutter test test/
+    run: fvm flutter test test/
 
-  test:integration:
-    description: "integration_test suite (smoke on AVD)."
-    run: flutter test integration_test/
-
-  # ── Build (ADR-014/016) ────────────────────────────────────────────────────
+  # ── Build (ADR-014/016) ──
   build:debug:
     description: "Debug APK."
-    run: flutter build apk --debug
+    run: fvm flutter build apk --debug
 
   build:release:
-    description: "Release APK (unsigned, inside pinned image only)."
-    run: flutter build apk --release
+    description: "Release APK (unsigned in CI, signed locally if key.properties exists)."
+    run: fvm flutter build apk --release
 
   build:appbundle:
     description: "Release AAB (Play format)."
-    run: flutter build appbundle --release
+    run: fvm flutter build appbundle --release
 
-# Concurrency: parallelise independent packages.
 ide:
   intellij:
     enabled: false

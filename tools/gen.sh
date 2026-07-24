@@ -1,43 +1,44 @@
 #!/usr/bin/env bash
 # =============================================================================
-# MediaHub v2 — deterministic codegen entry point (ADR-004)
+# MediaHub v2 — deterministic codegen entry point (FIXED)
 # =============================================================================
-# Same command runs locally, in CI gen-check, and in pre-commit hooks.
-# No arguments — fully deterministic.
-#
-# Bootstrap Validation note: melos exec runs build_runner per-package
-# (each package has its own dev_dependencies + build_runner config). Pigeon
-# runs separately as it has its own CLI.
+# FIX 1: Removed --no-enforce-lockfile (respects melos.yaml enforceLockfile)
+# FIX 2: Runs build_runner in ALL packages that have it (not just 3)
+# FIX 3: Uses melos run gen when possible, falls back to manual loop
+
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "==> melos bootstrap (resolves packages + lockfile)"
-# استخدام fvm لتجنب تعارض إصدارات Kernel binary وإضافة خيار الـ lockfile
-fvm exec melos bootstrap --no-enforce-lockfile
+echo "==> melos bootstrap"
+fvm exec melos bootstrap
 
-echo "==> dart run build_runner (per-package via melos exec)"
-# Run only in packages that have build_runner as a dev_dependency
-for pkg in domain data application; do
-  if [ -f "packages/$pkg/pubspec.yaml" ]; then
-    echo "  -> packages/$pkg"
-    (cd "packages/$pkg" && \
-      fvm dart run build_runner build --delete-conflicting-outputs --low-resources-mode)
+echo "==> build_runner across all packages"
+# Auto-detect packages with build_runner in dev_dependencies
+for pkg_dir in packages/*/; do
+  pubspec="${pkg_dir}pubspec.yaml"
+  if [ -f "$pubspec" ] && grep -q "build_runner:" "$pubspec" 2>/dev/null; then
+    echo "  -> $pkg_dir"
+    (cd "$pkg_dir" && fvm dart run build_runner build --delete-conflicting-outputs --low-resources-mode)
   fi
 done
 
-echo "==> dart run build_runner (root app)"
-fvm dart run build_runner build --delete-conflicting-outputs --low-resources-mode || true
+# Root app (if it has build_runner)
+if grep -q "build_runner:" pubspec.yaml 2>/dev/null; then
+  echo "  -> root app"
+  fvm dart run build_runner build --delete-conflicting-outputs --low-resources-mode || true
+fi
 
-echo "==> dart run pigeon (generates python_bridge bindings)"
-cd packages/python_bridge
-fvm dart run pigeon --input pigeons/api.dart
-cd -
+echo "==> pigeon (python_bridge)"
+if [ -f packages/python_bridge/pigeons/api.dart ]; then
+  cd packages/python_bridge
+  fvm dart run pigeon --input pigeons/api.dart
+  cd -
+else
+  echo "  ⚠️  No Pigeon schema found, skipping"
+fi
 
 echo "==> format generated code"
-fvm dart format \
-  packages/domain/lib/src/entities/*.g.dart \
-  packages/domain/lib/src/entities/*.freezed.dart \
-  packages/python_bridge/lib/src/messages.g.dart 2>/dev/null || true
+fvm dart format . 2>/dev/null || true
 
 echo "[gen] done."

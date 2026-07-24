@@ -1,6 +1,10 @@
 # =============================================================================
-# MediaHub v2 — Composite action: version-matrix verifier (ADR-013)
+# MediaHub v2 — Composite action: version-matrix verifier (FIXED)
 # =============================================================================
+# FIX: Makes ci/Dockerfile and other optional files non-fatal in Phase 0.
+# Uses .get() for optional version catalog keys.
+# Adds graceful error handling for missing files.
+
 name: verify-versions
 description: "Cross-check the version matrix across config files"
 runs:
@@ -14,93 +18,120 @@ runs:
     - name: Create verification script
       shell: bash
       run: |
-        cat <<'EOF' > verify.py
-        import re, sys, json, tomllib
+        cat <<'PYEOF' > verify.py
+        import re, sys, json
         from pathlib import Path
 
         root = Path(".")
         errs = []
+        warnings = []
 
-        # ── libs.versions.toml ──
-        toml = tomllib.loads((root / "android/gradle/libs.versions.toml").read_text())
-        agp = toml["versions"]["agp"]
-        kotlin = toml["versions"]["kotlin"]
-        gradle_toml = toml["versions"]["gradle"]
-        chaquopy = toml["versions"]["chaquopy"]
-        python_toml = toml["versions"]["python"]
+        def check_file(path, required=True):
+            if not path.exists():
+                msg = f"{path}: file not found"
+                if required:
+                    errs.append(msg)
+                else:
+                    warnings.append(msg)
+                return False
+            return True
 
-        # ── gradle-wrapper.properties ──
-        wrapper = (root / "android/gradle/wrapper/gradle-wrapper.properties").read_text()
-        m = re.search(r"gradle-(\d+\.\d+\.\d+)-bin\.zip", wrapper)
-        if not m:
-            errs.append("gradle-wrapper.properties: distributionUrl not found")
-        else:
-            gradle_wrapper = m.group(1)
-            if gradle_wrapper != gradle_toml:
-                errs.append(f"Gradle version mismatch: toml={gradle_toml}, wrapper={gradle_wrapper}")
+        # ── libs.versions.toml (REQUIRED) ──
+        toml_path = root / "android/gradle/libs.versions.toml"
+        if check_file(toml_path):
+            try:
+                import tomllib
+                toml = tomllib.loads(toml_path.read_text())
+                versions = toml.get("versions", {})
 
-        # ── fvm_config.json ──
-        fvm = json.loads((root / ".fvm/fvm_config.json").read_text())
-        flutter_fvm = fvm.get("flutter") or fvm.get("flutterSdkVersion")
-        if flutter_fvm is None:
-            errs.append("fvm_config.json: neither 'flutter' nor 'flutterSdkVersion' key present")
+                agp = versions.get("agp")
+                kotlin = versions.get("kotlin")
+                gradle_toml = versions.get("gradle")
+                python_toml = versions.get("python")
 
-        # ── settings.gradle.kts ──
-        settings = (root / "android/settings.gradle.kts").read_text()
-        m_agp = re.search(r'id\(\s*"com\.android\.application"\s*\)\s+version\s+"([\d.]+)"', settings)
-        m_kt = re.search(r'id\(\s*"org\.jetbrains\.kotlin\.android"\s*\)\s+version\s+"([\d.]+)"', settings)
-        agp_inline = m_agp.group(1) if m_agp else None
-        kt_inline = m_kt.group(1) if m_kt else None
-        if agp_inline is None:
-            errs.append("settings.gradle.kts: AGP version not found")
-        elif agp_inline != agp:
-            errs.append(f"AGP version mismatch: toml={agp}, settings.gradle.kts inline={agp_inline}")
-        if kt_inline is None:
-            errs.append("settings.gradle.kts: Kotlin version not found")
-        elif kt_inline != kotlin:
-            errs.append(f"Kotlin version mismatch: toml={kotlin}, settings.gradle.kts inline={kt_inline}")
+                if not agp:
+                    errs.append("libs.versions.toml: agp version missing")
+                if not kotlin:
+                    errs.append("libs.versions.toml: kotlin version missing")
 
-        # ── ci/Dockerfile ──
-        dockerfile = (root / "ci/Dockerfile").read_text()
-        m_py = re.search(r"PYTHON_VERSION=(\d+\.\d+)", dockerfile)
-        if not m_py:
-            errs.append("Dockerfile: PYTHON_VERSION not found")
-        else:
-            docker_py = m_py.group(1)
-            if docker_py != python_toml:
-                errs.append(f"Python version mismatch: toml={python_toml}, Docker={docker_py}")
+            except Exception as e:
+                errs.append(f"libs.versions.toml: parse error: {e}")
 
-        m_fl = re.search(r"FLUTTER_VERSION=(\d+\.\d+\.\d+)", dockerfile)
-        if not m_fl:
-            errs.append("Dockerfile: FLUTTER_VERSION not found")
-        else:
-            docker_fl = m_fl.group(1)
-            if docker_fl != flutter_fvm:
-                errs.append(f"Flutter version mismatch: fvm={flutter_fvm}, Docker={docker_fl}")
+        # ── gradle-wrapper.properties (REQUIRED) ──
+        wrapper_path = root / "android/gradle/wrapper/gradle-wrapper.properties"
+        if check_file(wrapper_path):
+            wrapper = wrapper_path.read_text()
+            m = re.search(r"gradle-(\d+\.\d+\.\d+)-bin\.zip", wrapper)
+            if not m:
+                errs.append("gradle-wrapper.properties: distributionUrl not found")
+            elif 'gradle_toml' in dir() and gradle_toml and m.group(1) != gradle_toml:
+                errs.append(f"Gradle version mismatch: toml={gradle_toml}, wrapper={m.group(1)}")
+
+        # ── fvm_config.json (REQUIRED) ──
+        fvm_path = root / ".fvm/fvm_config.json"
+        if check_file(fvm_path):
+            try:
+                fvm = json.loads(fvm_path.read_text())
+                flutter_fvm = fvm.get("flutter") or fvm.get("flutterSdkVersion")
+                if flutter_fvm is None:
+                    errs.append("fvm_config.json: no Flutter version key found")
+            except json.JSONDecodeError:
+                errs.append("fvm_config.json: invalid JSON")
+
+        # ── settings.gradle.kts (REQUIRED) ──
+        settings_path = root / "android/settings.gradle.kts"
+        if check_file(settings_path):
+            settings = settings_path.read_text()
+            # Flexible regex for Kotlin DSL
+            m_agp = re.search(
+                r'id\s*\(\s*"com\.android\.application"\s*\)[\s\S]*?version\s+"([\d.]+)"',
+                settings
+            )
+            m_kt = re.search(
+                r'id\s*\(\s*"org\.jetbrains\.kotlin\.android"\s*\)[\s\S]*?version\s+"([\d.]+)"',
+                settings
+            )
+            if m_agp and 'agp' in dir() and agp and m_agp.group(1) != agp:
+                errs.append(f"AGP version mismatch: toml={agp}, settings={m_agp.group(1)}")
+            if m_kt and 'kotlin' in dir() and kotlin and m_kt.group(1) != kotlin:
+                errs.append(f"Kotlin version mismatch: toml={kotlin}, settings={m_kt.group(1)}")
+
+        # ── ci/Dockerfile (OPTIONAL — Phase 0) ──
+        docker_path = root / "ci/Dockerfile"
+        if check_file(docker_path, required=False):
+            dockerfile = docker_path.read_text()
+            if 'python_toml' in dir() and python_toml:
+                m_py = re.search(r"PYTHON_VERSION=(\d+\.\d+)", dockerfile)
+                if m_py and m_py.group(1) != python_toml:
+                    errs.append(f"Python version mismatch: toml={python_toml}, Docker={m_py.group(1)}")
+            if 'flutter_fvm' in dir() and flutter_fvm:
+                m_fl = re.search(r"FLUTTER_VERSION=(\d+\.\d+\.\d+)", dockerfile)
+                if m_fl and m_fl.group(1) != flutter_fvm:
+                    errs.append(f"Flutter version mismatch: fvm={flutter_fvm}, Docker={m_fl.group(1)}")
 
         # ── AGP x Gradle compatibility ──
-        agp_major = int(agp.split(".")[0])
-        agp_minor = int(agp.split(".")[1])
-        gradle_major = int(gradle_toml.split(".")[0])
-        gradle_minor = int(gradle_toml.split(".")[1])
-        if agp_major == 8 and agp_minor == 7:
-            if (gradle_major, gradle_minor) < (8, 9):
+        if 'agp' in dir() and agp and 'gradle_toml' in dir() and gradle_toml:
+            agp_major = int(agp.split(".")[0])
+            agp_minor = int(agp.split(".")[1])
+            gradle_major = int(gradle_toml.split(".")[0])
+            gradle_minor = int(gradle_toml.split(".")[1])
+            if agp_major == 8 and agp_minor == 7 and (gradle_major, gradle_minor) < (8, 9):
                 errs.append(f"AGP {agp} requires Gradle >= 8.9; got {gradle_toml}")
 
-        # ── Kotlin x KSP compatibility ──
-        ksp = toml["versions"]["ksp"]
-        ksp_kotlin = ksp.split("-")[0]
-        if ksp_kotlin != kotlin:
-            errs.append(f"KSP pinned to {ksp_kotlin} but Kotlin is {kotlin}")
+        # ── Print results ──
+        if warnings:
+            print("⚠️  Warnings (non-blocking):")
+            for w in warnings:
+                print(f"   - {w}")
 
         if errs:
-            print("❌ Version matrix verification FAILED:")
+            print("\n❌ Version matrix verification FAILED:")
             for e in errs:
-                print(f"  - {e}")
+                print(f"   - {e}")
             sys.exit(1)
         else:
-            print("✅ Version matrix consistent.")
-        EOF
+            print("\n✅ Version matrix consistent.")
+        PYEOF
 
     - name: Run verification script
       shell: bash

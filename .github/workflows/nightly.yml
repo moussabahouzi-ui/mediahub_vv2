@@ -1,24 +1,11 @@
 # =============================================================================
 # MediaHub v2 — Nightly workflow (ADR-015/017)
 # =============================================================================
-# Heavier checks that run off-prime time: reproducibility verification (ADR-014)
-# + full Python lint with strict mypy + wheel-fingerprint check (ADR-007/018).
-#
-# TD-C6 fix (Architecture Review Gate): the reproducibility check now
-# discovers release APKs dynamically instead of assuming `app-release.apk`.
-# With ABI splits enabled (android/app/build.gradle.kts `splits.abi`),
-# `flutter build apk --release` produces one APK per ABI:
-#   app-arm64-v8a-release.apk
-#   app-armeabi-v7a-release.apk
-#   app-x86_64-release.apk
-# The check now hashes ALL release APKs and compares the combined hash set
-# across two clean builds. This verifies reproducibility per-ABI without
-# depending on a single filename.
+# Heavier checks: reproducibility (ADR-014) + Python wheel fingerprint.
 name: nightly
 
 on:
   schedule:
-    # 02:30 UTC daily
     - cron: "30 2 * * *"
   workflow_dispatch:
 
@@ -34,21 +21,17 @@ jobs:
       - uses: ./.github/actions/verify-versions
 
       - name: melos bootstrap
-        run: fvm dart pub global activate melos && fvm dart pub global run melos bootstrap
+        run: |
+          rm -rf ~/.pub-cache/global_packages/melos
+          fvm flutter pub global activate melos
+          fvm exec melos bootstrap
 
       - name: Run codegen
         run: bash tools/gen.sh
 
-      # ── Pass 1 ──────────────────────────────────────────────────────────────
-      # Build release APKs and hash every APK produced under
-      # build/app/outputs/flutter-apk/ that matches the release pattern.
-      # ABI splits produce app-<abi>-release.apk; a universal APK (if enabled)
-      # would be app-release.apk. We hash both.
       - name: Build release APK — pass 1
         run: |
           fvm flutter build apk --release
-          # Discover all release APKs dynamically (TD-C6 fix).
-          # Sort by filename so the hash set is deterministic.
           find build/app/outputs/flutter-apk -name '*-release.apk' -o -name 'app-release.apk' | sort | \
             xargs sha256sum > /tmp/hash1.txt
           echo "── Pass 1 APK hashes ──"
@@ -66,15 +49,11 @@ jobs:
 
       - name: Compare hashes
         run: |
-          # Compare the full hash manifest (filename + sha256 per line).
-          # A single byte difference in any APK, a missing APK, or an extra
-          # APK will surface as a diff.
           if ! diff -u /tmp/hash1.txt /tmp/hash2.txt; then
             echo "::error::Release APKs are not reproducible (ADR-014). See diff above."
             exit 1
           fi
           echo "✅ Reproducible — all release APKs byte-identical across two clean builds."
-          echo "   APK count: $(wc -l < /tmp/hash1.txt)"
 
   python-wheel-fingerprint:
     name: Python wheel fingerprint (ADR-007/018)
@@ -85,8 +64,6 @@ jobs:
       - name: Resolve wheels for each ABI + record fingerprint
         run: |
           cd python
-          # Phase 0: requirements.lock is empty. The fingerprint check
-          # asserts that an empty lockfile produces an empty wheel set.
           if [ -s requirements.lock ]; then
             pip download --no-deps --dest /tmp/wheels -r requirements.lock
             sha256sum /tmp/wheels/* | sort > /tmp/wheel-fingerprint.txt

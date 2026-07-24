@@ -1,7 +1,8 @@
 # =============================================================================
-# MediaHub v2 — Composite action: Java setup (ADR-014)
+# MediaHub v2 — Composite action: Java setup (VERIFIED OK)
 # =============================================================================
-# Temurin JDK 17. Pinned. Compatible with AGP 8.7.x and Gradle 8.11.x.
+# No changes needed. Already correct.
+
 name: setup-java
 description: "Install Temurin JDK 17 + cache Gradle deps"
 inputs:

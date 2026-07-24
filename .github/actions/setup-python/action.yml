@@ -1,7 +1,9 @@
 # =============================================================================
-# MediaHub v2 — Composite action: Python setup (ADR-007/014)
+# MediaHub v2 — Composite action: Python setup (FIXED)
 # =============================================================================
-# Python 3.11 + dev tooling (pytest, ruff, mypy, pip-audit). Cached venv.
+# FIX: Handles missing requirements-dev.txt gracefully (Phase 0).
+# Always installs core tools (pytest, ruff, mypy, pip-audit).
+
 name: setup-python
 description: "Install Python 3.11 + dev deps + restore cache"
 inputs:
@@ -19,11 +21,22 @@ runs:
         cache: pip
         cache-dependency-path: ${{ inputs.requirements-path }}
 
-    - name: Install Python dev deps
+    - name: Install Python tooling
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install -r "${{ inputs.requirements-path }}"
+
+        # Install dev requirements if present (optional in Phase 0)
+        REQ="${{ inputs.requirements-path }}"
+        if [ -f "$REQ" ] && [ -s "$REQ" ]; then
+          echo "Installing dev requirements from $REQ"
+          pip install -r "$REQ"
+        else
+          echo "⚠️ $REQ not found or empty — skipping (Phase 0)"
+        fi
+
+        # Core CI tools (always installed)
+        pip install pytest ruff mypy pip-audit
 
     - name: Show versions
       shell: bash
