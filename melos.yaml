@@ -1,8 +1,8 @@
 # =============================================================================
 # MediaHub v2 — Melos configuration (FIXED)
 # =============================================================================
-# FIX: All scripts now use 'fvm' explicitly to match gen.sh and CI.
-# Removed ambiguous 'dart' calls that could use wrong SDK.
+# FIX: Scripts use flutter/dart directly (no fvm prefix).
+# FVM is for local dev only; CI uses flutter-action directly.
 
 name: mediahub_v2
 
@@ -18,58 +18,53 @@ command:
     enforceLockfile: true
 
 scripts:
-  # ── Code generation (ADR-004) ──
   gen:
     description: "Run build_runner + pigeon across all packages."
     run: bash tools/gen.sh
 
   gen:clean:
     description: "Clean build_runner outputs."
-    run: fvm dart run build_runner clean
+    run: dart run build_runner clean
 
-  # ── Analysis (ADR-002/015) ──
   analyze:
     description: "flutter analyze + custom_lint + ADR-002 import check."
     run: |
-      fvm flutter analyze .
-      fvm dart run custom_lint
+      flutter analyze .
+      dart run custom_lint
       bash tools/check_imports.sh
 
-  # ── Formatting ──
   format:
     description: "Apply dart format."
-    run: fvm dart format .
+    run: dart format .
 
   format:check:
     description: "Verify dart format compliance (CI)."
-    run: fvm dart format --set-exit-if-changed .
+    run: dart format --set-exit-if-changed .
 
-  # ── Tests (ADR-017) ──
   test:unit:
     description: "Pure-Dart + Flutter unit tests."
     run: |
-      fvm flutter test packages/domain/test
-      fvm flutter test packages/data/test
-      fvm flutter test packages/application/test
-      fvm flutter test packages/sync_engine/test
-      fvm flutter test packages/python_bridge/test
+      flutter test packages/domain/test
+      flutter test packages/data/test
+      flutter test packages/application/test
+      flutter test packages/sync_engine/test
+      flutter test packages/python_bridge/test
 
   test:widget:
     description: "Widget tests in app/test."
-    run: fvm flutter test test/
+    run: flutter test test/
 
-  # ── Build (ADR-014/016) ──
   build:debug:
     description: "Debug APK."
-    run: fvm flutter build apk --debug
+    run: flutter build apk --debug
 
   build:release:
     description: "Release APK (unsigned in CI, signed locally if key.properties exists)."
-    run: fvm flutter build apk --release
+    run: flutter build apk --release
 
   build:appbundle:
     description: "Release AAB (Play format)."
-    run: fvm flutter build appbundle --release
+    run: flutter build appbundle --release
 
 ide:
   intellij:

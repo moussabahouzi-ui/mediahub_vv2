@@ -1,6 +1,7 @@
 # =============================================================================
 # MediaHub v2 — Reusable workflow: tests (ADR-017)
 # =============================================================================
+# FIX: Uses flutter/dart directly (no fvm in CI).
 name: _reusable-test
 on:
   workflow_call:
@@ -13,19 +14,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-flutter
       - uses: ./.github/actions/verify-versions
+      - name: Install melos
+        run: dart pub global activate melos
       - name: melos bootstrap
-        run: |
-          rm -rf ~/.pub-cache/global_packages/melos
-          fvm flutter pub global activate melos
-          fvm exec melos bootstrap
+        run: melos bootstrap
       - name: Run unit tests
         run: |
-          fvm flutter test packages/domain/test
-          fvm flutter test packages/data/test
-          fvm flutter test packages/application/test
-          fvm flutter test packages/sync_engine/test
-          fvm flutter test packages/python_bridge/test
-          fvm flutter test packages/design_system/test
+          flutter test packages/domain/test
+          flutter test packages/data/test
+          flutter test packages/application/test
+          flutter test packages/sync_engine/test
+          flutter test packages/python_bridge/test
+          flutter test packages/design_system/test
 
   widget:
     name: Widget tests (app)
@@ -34,13 +34,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-flutter
       - uses: ./.github/actions/verify-versions
+      - name: Install melos
+        run: dart pub global activate melos
       - name: melos bootstrap
-        run: |
-          rm -rf ~/.pub-cache/global_packages/melos
-          fvm flutter pub global activate melos
-          fvm exec melos bootstrap
+        run: melos bootstrap
       - name: Run widget tests
-        run: fvm flutter test test/
+        run: flutter test test/
 
   python:
     name: Python pytest

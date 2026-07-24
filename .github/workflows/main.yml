@@ -1,7 +1,6 @@
 # =============================================================================
 # MediaHub v2 — main branch workflow (ADR-015)
 # =============================================================================
-# Full suite on push to main. Includes release-build preparation (unsigned).
 name: main
 
 on:
@@ -40,4 +39,3 @@ jobs:
     uses: ./.github/workflows/_reusable-build.yml
     with:
       build-type: release
-    # Phase 1+ (ADR-016) will replace this with the signed release pipeline

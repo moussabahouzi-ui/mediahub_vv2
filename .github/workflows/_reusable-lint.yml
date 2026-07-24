@@ -1,6 +1,7 @@
 # =============================================================================
 # MediaHub v2 — Reusable workflow: lint + format + analyzer (ADR-002/015)
 # =============================================================================
+# FIX: Uses flutter/dart directly (no fvm in CI).
 name: _reusable-lint
 on:
   workflow_call:
@@ -16,20 +17,20 @@ jobs:
 
       - uses: ./.github/actions/verify-versions
 
+      - name: Install melos
+        run: dart pub global activate melos
+
       - name: melos bootstrap
-        run: |
-          rm -rf ~/.pub-cache/global_packages/melos
-          fvm flutter pub global activate melos
-          fvm exec melos bootstrap
+        run: melos bootstrap
 
       - name: Format check
-        run: fvm dart format --set-exit-if-changed .
+        run: dart format --set-exit-if-changed .
 
       - name: Analyze (flutter analyze)
-        run: fvm flutter analyze .
+        run: flutter analyze .
 
       - name: custom_lint (riverpod_lint)
-        run: fvm dart run custom_lint
+        run: dart run custom_lint
 
       - name: ADR-002 import-rule check (check_imports.sh)
         run: bash tools/check_imports.sh

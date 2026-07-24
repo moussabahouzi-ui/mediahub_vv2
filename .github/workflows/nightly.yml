@@ -1,7 +1,7 @@
 # =============================================================================
 # MediaHub v2 — Nightly workflow (ADR-015/017)
 # =============================================================================
-# Heavier checks: reproducibility (ADR-014) + Python wheel fingerprint.
+# FIX: Uses flutter/dart directly (no fvm in CI).
 name: nightly
 
 on:
@@ -20,18 +20,18 @@ jobs:
       - uses: ./.github/actions/setup-python
       - uses: ./.github/actions/verify-versions
 
+      - name: Install melos
+        run: dart pub global activate melos
+
       - name: melos bootstrap
-        run: |
-          rm -rf ~/.pub-cache/global_packages/melos
-          fvm flutter pub global activate melos
-          fvm exec melos bootstrap
+        run: melos bootstrap
 
       - name: Run codegen
         run: bash tools/gen.sh
 
       - name: Build release APK — pass 1
         run: |
-          fvm flutter build apk --release
+          flutter build apk --release
           find build/app/outputs/flutter-apk -name '*-release.apk' -o -name 'app-release.apk' | sort | \
             xargs sha256sum > /tmp/hash1.txt
           echo "── Pass 1 APK hashes ──"
@@ -39,9 +39,9 @@ jobs:
 
       - name: Clean + rebuild — pass 2
         run: |
-          fvm flutter clean
-          fvm flutter pub get
-          fvm flutter build apk --release
+          flutter clean
+          flutter pub get
+          flutter build apk --release
           find build/app/outputs/flutter-apk -name '*-release.apk' -o -name 'app-release.apk' | sort | \
             xargs sha256sum > /tmp/hash2.txt
           echo "── Pass 2 APK hashes ──"

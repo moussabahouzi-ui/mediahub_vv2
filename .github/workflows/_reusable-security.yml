@@ -1,6 +1,7 @@
 # =============================================================================
 # MediaHub v2 — Reusable workflow: security scan (ADR-011/015)
 # =============================================================================
+# FIX: Uses flutter/dart directly (no fvm in CI).
 name: _reusable-security
 on:
   workflow_call:
@@ -39,5 +40,5 @@ jobs:
 
       - name: pub audit + pana health (ADR-018)
         run: |
-          fvm dart pub audit --no-fatal-infos || true
-          fvm dart pub outdated --no-dev-dependencies || true
+          dart pub audit --no-fatal-infos || true
+          dart pub outdated --no-dev-dependencies || true

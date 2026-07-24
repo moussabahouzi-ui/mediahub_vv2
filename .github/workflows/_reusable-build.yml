@@ -1,8 +1,7 @@
 # =============================================================================
 # MediaHub v2 — Reusable workflow: build (ADR-014/016)
 # =============================================================================
-# Builds debug + release APK. Release uses debug signing in Phase 0 CI
-# (no signing secrets needed). ADR-016 release workflow handles real signing.
+# FIX: Uses flutter/dart directly (no fvm in CI).
 name: _reusable-build
 on:
   workflow_call:
@@ -24,17 +23,17 @@ jobs:
       - uses: ./.github/actions/setup-python
       - uses: ./.github/actions/verify-versions
 
+      - name: Install melos
+        run: dart pub global activate melos
+
       - name: melos bootstrap
-        run: |
-          rm -rf ~/.pub-cache/global_packages/melos
-          fvm flutter pub global activate melos
-          fvm exec melos bootstrap
+        run: melos bootstrap
 
       - name: Run codegen (ADR-004)
         run: bash tools/gen.sh
 
       - name: Build ${{ inputs.build-type }} APK
-        run: fvm flutter build apk --${{ inputs.build-type }}
+        run: flutter build apk --${{ inputs.build-type }}
 
       - name: Verify APK produced
         run: |

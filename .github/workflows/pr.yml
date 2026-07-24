@@ -1,7 +1,6 @@
 # =============================================================================
 # MediaHub v2 — PR workflow (ADR-015)
 # =============================================================================
-# Required checks for every PR. Branch protection enforces these.
 name: pr
 
 on:

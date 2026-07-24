@@ -1,9 +1,8 @@
 # =============================================================================
-# MediaHub v2 — Composite action: Flutter setup (FIXED)
+# MediaHub v2 — Composite action: Flutter setup (FIXED for CI)
 # =============================================================================
-# FIX: Reads Flutter version from .fvm/fvm_config.json (no external action needed).
-# Falls back to 3.29.0 if FVM config is missing.
-
+# FIX: Uses flutter/dart directly (no fvm in CI). FVM is for local dev only.
+# flutter-action@v2 puts flutter + dart in PATH automatically.
 name: setup-flutter
 description: "Install pinned Flutter SDK + restore pub cache"
 inputs:
@@ -14,16 +13,14 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Read FVM version
+    - name: Read Flutter version from FVM config (if exists)
       id: fvm
       shell: bash
       run: |
         if [ -f .fvm/fvm_config.json ]; then
-          # Extract flutterSdkVersion from JSON (no external dependency)
           VERSION=$(cat .fvm/fvm_config.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('flutterSdkVersion','3.29.0'))")
         else
           VERSION="3.29.0"
-          echo "⚠️ .fvm/fvm_config.json not found, using fallback $VERSION"
         fi
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         echo "Flutter version: $VERSION"
